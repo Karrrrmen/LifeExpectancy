@@ -1,0 +1,223 @@
+---
+title: "What to Expect with Life Expectancy?"
+author: 
+  - Karmen Zhu, Edan Wong, Saanvi Prasanth
+date: 4 October 2024
+date-format: long
+format: pdf
+number-sections: true
+---
+
+```{r}
+library(tidyverse)
+data <- LifeExpectancyData
+
+colnames(data)[colnames(data) == "Life expectancy"] <- "LifeExpectancy"
+colnames(data)[colnames(data) == "Income composition of resources"] <- "IncomeComposition"
+
+data <- data[, c("LifeExpectancy", "GDP", "Polio", "Diphtheria", "Status", "IncomeComposition")]
+# View the selected columns
+head(selected_columns)
+#### Save data ####
+write_csv(cleaned_data, "~/STA302-group55/LifeExpectancy/LifeExpectancy/data/raw_data/cleaned_data.csv")
+```
+
+# Data {#sec-data}
+
+```{r}
+# Randomly select 10 rows from the data
+sampled_data <- data |> sample_n(10)
+
+# Display the selected data
+sampled_data
+```
+
+
+# Results {#sec-mydatasection}
+
+## Response variable(Life Expectancy)
+```{r}
+
+morandi_hist <- rgb(0.2, 0.0, 0.0, 0.4)
+  hist(data$LifeExpectancy,
+     main = "Distribution of Life Expectancy",
+     xlab = "Life Expectancy",
+     col = morandi_hist,
+     breaks = 10)
+```
+
+
+# Visualizing the Relationship Between Life Expectancy and Its Predictors
+```{r}
+
+par(mfrow = c(2, 3))
+
+# 1. Life Expectancy VS GDP plot
+morandi_color_gdp <- rgb(0.4, 0.6, 0.4, 0.4)
+plot(data$GDP, data$LifeExpectancy, 
+     main = "Life Expectancy VS GDP", 
+     xlab = "GDP", 
+     ylab = "Life Expectancy",
+     col = morandi_color_gdp,
+     pch = 19,
+     cex = 0.5)
+
+# 2. Life Expectancy VS Polio Immunization Coverage plot
+morandi_color_polio <- rgb(0.8, 0.6, 0.6, 0.4)
+plot(data$Polio, data$LifeExpectancy, 
+     main = "VS Polio Immunization Coverage", 
+     xlab = "Polio", 
+     ylab = "Life Expectancy",
+     col = morandi_color_polio,
+     pch = 19,
+     cex = 0.5)
+
+# 3. Life Expectancy VS Diphtheria Immunization Coverage plot
+morandi_color_diphtheria <- rgb(0.6, 0.8, 0.8, 0.4)
+plot(data$Diphtheria, data$LifeExpectancy, 
+     main = "VS Diphtheria Immunization Coverage", 
+     xlab = "Diphtheria", 
+     ylab = "Life Expectancy",
+     col = morandi_color_diphtheria,
+     pch = 19,
+     cex = 0.5)
+
+# 4. Linear Model for Life Expectancy by Developed/Developing Status
+data$Status <- factor(data$Status, labels = c("Developed", "Developing"))
+boxplot(LifeExpectancy ~ Status, data=data, 
+        main="VS Status", 
+        xlab="Status", ylab="Life Expectancy")
+
+# 5. Life Expectancy VS Income Composition of Resources plot
+morandi_color_income <- rgb(0.6, 0.6, 0.8, 0.4)
+plot(data$IncomeComposition, data$LifeExpectancy, 
+     main = "VS Income Composition of Resources", 
+     xlab = "Income Composition of Resources", 
+     ylab = "Life Expectancy",
+     col = morandi_color_income,
+     pch = 19,
+     cex = 0.5)
+
+# Reset layout back to normal (1 plot per page)
+par(mfrow = c(1, 1))
+
+```
+
+
+# Preliminary Model using the Predictors
+```{r}
+
+fit = lm(LifeExpectancy ~  GDP + Polio + Diphtheria + Status + IncomeComposition, data=data)
+summary(fit)
+```
+
+# Correlation Matrix
+```{r}
+
+# Convert Status to a numeric variable
+data$Status <- as.numeric(factor(data$Status))
+cor_data <- data[, c("LifeExpectancy", "GDP", "Polio", "Diphtheria", "IncomeComposition")]
+# correlation matrix
+cor_matrix <- cor(cor_data, use = "complete.obs")
+print(cor_matrix)
+```
+# Correlation Plot
+```{r}
+
+library(PerformanceAnalytics)
+library(dplyr)
+cor_data <- data[, c("LifeExpectancy", "GDP", "Polio", "Diphtheria", "IncomeComposition")]
+chart.Correlation(cor_data, histogram = TRUE, pch = 19)
+```
+
+# Residuals vs Fitted
+```{r}
+
+morandi_residual_fitted <- rgb(1.0, 0.8, 0.4, 0.4)
+fi <- fitted(fit)
+resi <- resid(fit)
+plot(resi ~ fi,
+     main = "Residuals vs Fitted",
+     xlab = "Fitted values",
+     ylab = "Residuals",
+     pch = 19, col = morandi_residual_fitted)
+abline(h = 0, col = "red", lty = 2)
+```
+
+
+```{r}
+#| label: fig-residuals-plots
+#| fig-cap: Residuals versus Each Predictors
+#| echo: false
+
+library(car)
+fitted <- lm(LifeExpectancy ~ GDP + Polio + Diphtheria + IncomeComposition, data = data)
+crPlots(fitted, smooth = list(span = 0.8))  # 'span' is for stability
+```
+
+
+# Q-Q Plot of Residuals
+```{r}
+
+morandi_qq <- rgb(0.4, 0.2, 0.2, 0.4)
+qqnorm(resi, main = "Q-Q Plot", col = morandi_qq)
+qqline(resi, col = "red", lty = 2)
+```
+
+# A root of Standardized Residuals vs Fitted Values
+```{r}
+
+morandi_scale <- rgb(0.0, 0.4, 1.0, 0.4)
+standardized_residuals <- rstandard(fit)
+plot(fi, sqrt(abs(standardized_residuals)),
+     main = "Scale-Location",
+     xlab = "Fitted Values",
+     ylab = "√|Standardized Residuals|",
+     pch = 19, col = morandi_scale)
+
+# Add a smoothing line to check for patterns
+lines(lowess(fi, sqrt(abs(standardized_residuals))), col = 'red', lwd = 2)
+```
+
+
+# Standardized Residuals vs Leverage
+```{r}
+
+morandi_leverag <- rgb(0.6, 0.2, 0.0, 0.4)
+plot(fit, which = 5, main = "Residuals vs Leverage Plot", col = morandi_leverag)
+
+
+leverage_values <- hatvalues(fit)
+
+# Display leverage values
+leverage_values
+
+# Set a threshold for high leverage points (commonly 2 times the average leverage value)
+threshold <- 2 * mean(leverage_values)
+# Identify and display observations with high leverage
+high_leverage_points <- which(leverage_values > threshold)
+high_leverage_values <- leverage_values[high_leverage_points]
+```
+
+# Histogram of Residuals (to check the distribution of residuals)
+```{r}
+
+morandi_hist <- rgb(0.2, 0.4, 0.6, 0.4)
+hist(resi, breaks = 20, main = "Histogram of Residuals", 
+     xlab = "Residuals", col = morandi_hist, border = "white")
+```
+# Cook's distance
+```{r}
+cooksd <- cooks.distance(fit)
+
+# Generate Cook's Distance plot
+morandi_cook <- rgb(0.6, 0.1, 0.2, 0.6)
+plot(cooksd, type = "h", lwd = 2, col = morandi_cook, 
+     main = "Cook's Distance", ylab = "Cook's Distance")
+
+# Add a threshold line for influential points (commonly 4/n where n is the number of observations)
+abline(h = 4 / nrow(data), col = "red", lty = 2)
+```
+
+
+

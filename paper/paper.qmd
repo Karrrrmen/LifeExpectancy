@@ -1,0 +1,297 @@
+---
+title: "Life Expectancy..."
+subtitle: ""
+author: 
+  - Karmen Zhu, Edan Wong, Saanvi Prasanth
+thanks: "Code and data are available at: _______"
+date: 2 October 2024
+date-format: long
+abstract: "  "
+format: pdf
+number-sections: true
+bibliography: references.bib
+---
+
+```{r}
+#| include: false
+#| warning: false
+#| message: false
+
+library(tidyverse)
+data <- LifeExpectancyData
+
+#write.csv(data, "~/STA302-group55/LifeExpectancy/LifeExpectancy/data/analysis_data/LifeExpectancyData.csv")
+# Rename the column using colnames()
+data <- read.csv(here::here("data/original_data/LifeExpextancyData.csv"))
+colnames(data)[colnames(data) == "Life expectancy"] <- "LifeExpectancy"
+colnames(data)[colnames(data) == "Income composition of resources"] <- "IncomeComposition"
+```
+
+
+# Introduction
+
+
+
+# Data {#sec-data}
+
+## Raw Data {#sec-first-point}
+The data used in this paper is access in from Open Data Toronto and the particular data set used was the Daily Shelter & Overnight Service Occupancy & Capacity (@opendatatoronto). To analysis the data and creating graphs using the data, following package that was build in the (R program @citeR) was used: tidyverse (@tidyverse), dplyr (@dplyr), lubridate (@lubridate), and ggplot2 (@ggplot2). We clean the column names, separate the date into `year` and `month`, and create a standardized date column for monthly aggregation. The cleaned data is then saved for further analysis.
+
+```{r}
+# Randomly select 10 rows from the data
+sampled_data <- data |> sample_n(10)
+
+# Display the selected data
+sampled_data
+```
+
+## Limitation of Data
+
+
+
+# Results {#sec-mydatasection}
+
+## Response variable(Life Expectancy)
+```{r}
+#| label: fig-response-variable
+#| fig-cap: Distribution of Response Value
+#| echo: false
+
+morandi_hist <- rgb(0.2, 0.0, 0.0, 0.4)
+  hist(data$LifeExpectancy,
+     main = "Distribution of Life Expectancy",
+     xlab = "Life Expectancy",
+     col = morandi_hist,
+     breaks = 10)
+```
+(explain why it fits linear regression, normality)
+
+
+```{r}
+#| label: fig-responsepredictor-plots
+#| fig-cap: Visualizing the Relationship Between Life Expectancy and Its Predictors
+#| echo: false
+
+par(mfrow = c(2, 3))
+
+# 1. Life Expectancy VS GDP plot
+morandi_color_gdp <- rgb(0.4, 0.6, 0.4, 0.4)
+plot(data$GDP, data$LifeExpectancy, 
+     main = "Life Expectancy VS GDP", 
+     xlab = "GDP", 
+     ylab = "Life Expectancy",
+     col = morandi_color_gdp,
+     pch = 19,
+     cex = 0.5)
+# Add the regression line in red
+abline(149.7477, 0.2592, col = "red", lty = 2)
+
+# 2. Life Expectancy VS Polio Immunization Coverage plot
+morandi_color_polio <- rgb(0.8, 0.6, 0.6, 0.4)
+plot(data$Polio, data$LifeExpectancy, 
+     main = "VS Polio Immunization Coverage", 
+     xlab = "Polio", 
+     ylab = "Life Expectancy",
+     col = morandi_color_polio,
+     pch = 19,
+     cex = 0.5)
+# Add the regression line in red
+abline(149.7477, 0.2592, col = "red", lwd = 2)
+
+# 3. Life Expectancy VS Diphtheria Immunization Coverage plot
+morandi_color_diphtheria <- rgb(0.6, 0.8, 0.8, 0.4)
+plot(data$Diphtheria, data$LifeExpectancy, 
+     main = "VS Diphtheria Immunization Coverage", 
+     xlab = "Diphtheria", 
+     ylab = "Life Expectancy",
+     col = morandi_color_diphtheria,
+     pch = 19,
+     cex = 0.5)
+# Add the regression line in red
+abline(149.7477, 0.2592, col = "red", lwd = 2)
+
+# 4. Linear Model for Life Expectancy by Developed/Developing Status
+data$Status <- factor(data$Status, labels = c("Developed", "Developing"))
+boxplot(LifeExpectancy ~ Status, data=data, 
+        main="VS Status", 
+        xlab="Status", ylab="Life Expectancy")
+
+# 5. Life Expectancy VS Income Composition of Resources plot
+morandi_color_income <- rgb(0.6, 0.6, 0.8, 0.4)
+plot(data$IncomeComposition, data$LifeExpectancy, 
+     main = "VS Income Composition of Resources", 
+     xlab = "Income Composition of Resources", 
+     ylab = "Life Expectancy",
+     col = morandi_color_income,
+     pch = 19,
+     cex = 0.5)
+# Add the regression line in red
+abline(149.7477, 0.2592, col = "red", lty = 2)
+
+# Reset layout back to normal (1 plot per page)
+par(mfrow = c(1, 1))
+
+```
+
+
+
+```{r}
+#| label: fig-TotalExpenditure
+#| fig-cap: Preliminary Model using the Predictors
+#| echo: false
+fit = lm(LifeExpectancy ~  GDP + Polio + Diphtheria + Status + IncomeComposition, data=data)
+summary(fit)
+```
+```{r}
+#| label: fig-cor-matrix
+#| fig-cap: Correlation Matrix
+#| echo: false
+# Convert Status to a numeric variable
+data$Status <- as.numeric(factor(data$Status))
+cor_data <- data[, c("LifeExpectancy", "GDP", "Polio", "Diphtheria", "IncomeComposition")]
+# correlation matrix
+cor_matrix <- cor(cor_data, use = "complete.obs")
+print(cor_matrix)
+```
+```{r}
+#| label: fig-cor-plot
+#| fig-cap: Correlation Plot
+#| echo: false
+
+library(PerformanceAnalytics)
+library(dplyr)
+cor_data <- data[, c("LifeExpectancy", "GDP", "Polio", "Diphtheria", "IncomeComposition")]
+chart.Correlation(cor_data, histogram = TRUE, pch = 19)
+```
+
+```{r}
+#| label: fig-residual-fitted
+#| fig-cap: Residuals vs Fitted
+#| echo: false
+
+morandi_residual_fitted <- rgb(1.0, 0.8, 0.4, 0.4)
+fi <- fitted(fit)
+resi <- resid(fit)
+plot(resi ~ fi,
+     main = "Residuals vs Fitted",
+     xlab = "Fitted values",
+     ylab = "Residuals",
+     pch = 19, col = morandi_residual_fitted)
+abline(h = 0, col = "red", lty = 2)
+```
+
+
+```{r}
+#| label: fig-residuals-plots
+#| fig-cap: Residuals versus Each Predictors
+#| echo: false
+
+par(mfrow = c(2, 3))  # (2 rows, 3 columns)
+
+clean_data <- data[complete.cases(data$LifeExpectancy, data$GDP, data$Polio, data$Diphtheria, data$IncomeComposition, data$Status), ]
+
+plot(clean_data$GDP, resi, xlab = "GDP", ylab = "Residuals", main = "Residuals vs GDP")
+abline(h = 0, col = "red")
+
+plot(clean_data$Polio, resi, xlab = "Polio", ylab = "Residuals", main = "Residuals vs Polio")
+abline(h = 0, col = "red")
+
+plot(clean_data$Diphtheria, resi, xlab = "Diphtheria", ylab = "Residuals", main = "Residuals vs Diphtheria")
+abline(h = 0, col = "red")
+
+plot(clean_data$IncomeComposition, resi, xlab = "Income Composition", ylab = "Residuals", main = "Residuals vs Income Composition")
+abline(h = 0, col = "red")
+
+boxplot(resi ~ clean_data$Status, xlab = "Status", ylab = "Residuals", main = "Residuals vs Status")
+abline(h = 0, col = "red")
+
+```
+
+```{r}
+#| label: fig-qq
+#| fig-cap: Q-Q Plot of Residuals
+#| echo: false
+
+morandi_qq <- rgb(0.4, 0.2, 0.2, 0.4)
+qqnorm(resi, main = "Q-Q Plot", col = morandi_qq)
+qqline(resi, col = "red", lty = 2)
+```
+
+```{r}
+#| label: fig-scale-location
+#| fig-cap: A root of Standardized Residuals vs Fitted Values
+#| echo: false
+
+morandi_scale <- rgb(0.0, 0.4, 1.0, 0.4)
+standardized_residuals <- rstandard(fit)
+plot(fi, sqrt(abs(standardized_residuals)),
+     main = "Scale-Location",
+     xlab = "Fitted Values",
+     ylab = "√|Standardized Residuals|",
+     pch = 19, col = morandi_scale)
+
+# Add a smoothing line to check for patterns
+lines(lowess(fi, sqrt(abs(standardized_residuals))), col = 'red', lwd = 2)
+```
+
+
+```{r}
+#| label: fig-leverage
+#| fig-cap: Standardized Residuals vs Leverage
+#| echo: false
+
+morandi_leverag <- rgb(0.6, 0.2, 0.0, 0.4)
+plot(fit, which = 5, main = "Residuals vs Leverage Plot", col = morandi_leverag)
+```
+```{r}
+#| label: fig-resi-histogram
+#| fig-cap: Histogram of Residuals
+#| echo: false
+
+morandi_hist <- rgb(0.2, 0.4, 0.6, 0.4)
+hist(resi, breaks = 20, main = "Histogram of Residuals", 
+     xlab = "Residuals", col = morandi_hist, border = "white")
+```
+
+
+\newpage
+
+# Discussion
+
+## First discussion point
+In the response vs. 5 predictors plots (@fig-responsepredictor-plots), Status categorizes countries into developed or developing status, which distincts countries by their economic dependence and medical development level. GDP (in USD) is the statistic that measures the economic welfare of a country. Income composition of resources is the HDI measurement on the standard of living calculated by GNI per capita, which is commonly used to reflect average income. Polio and Diphtheria represent the immunization coverage among 1-year-olds children in percentage and they manifest the extensiveness and accessibility for public health, where widespread infectious diseases can potentially lower life expectancy as these two diseases are fatal to children. The above five predictors reveal the proportional relationships between national economic standings and life expectancy and analyze whether higher economic standings countries have a larger life expectancy.
+
+## Second discussion point - Preliminary Results (212 words)
+From the Residuals vs Fitted graph(@fig-residual-fitted) and the plots of Residuals vs each Predictor (@fig-residuals-plots), the residuals appear randomly scattered around the zero line, which satisfies linearity There is no discernible pattern in the residuals, suggesting the model captures the linear relationship between the predictors and response variable well. The residuals also do not display any systematic pattern, implying that the errors are uncorrelated.
+
+In QQ Plot(@fig-qq), the residuals generally follow the 45-degree reference line, which suggests that the assumption of normality is mostly satisfied. However, the points at both ends deviate from the line, indicating potential outliers. The presence of outliers requires further transformation of both response and predictors values
+
+The Scale-Location graph(@fig-scale-location) shows that while the points are not fully evenly dispersed, they do not exhibit a clear pattern or trend, indicating that the assumption of Constant Variance may not be entirely satisfied. The presence of a non-horizontal line suggests variability in the spread of residuals, which our team should address in the next steps to improve model accuracy.
+
+The Residuals vs. Leverage plot(@fig-leverage) shows some points clustering around zero, while others are more dispersed, with no clear pattern evident. This indicates a need for our team to improve the distribution of points in future analyses.
+
+
+## Weaknesses and next steps
+
+
+# Conclusion
+
+
+
+\newpage
+
+\appendix
+
+# Appendix {-}
+
+
+# Additional data details
+
+
+
+\newpage
+
+
+# References
+
+
